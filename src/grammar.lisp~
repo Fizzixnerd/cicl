@@ -1,5 +1,0 @@
-;;;; Here we go with the definition of the C grammar and stuff.
-
-
-(defclass token ()
-  (:docusl

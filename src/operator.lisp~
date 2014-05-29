@@ -1,0 +1,4 @@
+(defclass operator ()
+  ((name
+    :type 
+    

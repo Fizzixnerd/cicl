@@ -1,0 +1,5 @@
+(in-package :cicl)
+
+(defclass cstring ()
+  (str
+   :type :string))

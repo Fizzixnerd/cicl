@@ -23,3 +23,7 @@
       ;; else
       (format stream (format-str repr))))
     
+(defgeneric representation (expression)
+  (:documentation
+   "Return a `representation' object for the `expression' `expression'."))
+

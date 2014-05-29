@@ -1,7 +1,8 @@
 (in-package :cicl)
 
-(defclass call-list ()
-  ((val
+(defclass call-list (compound-expression)
+  ((op)
+   (subexps
     :type 'list
     :accessor val
     :initarg :val

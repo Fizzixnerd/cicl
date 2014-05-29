@@ -1,5 +1,0 @@
-(define-operator pincr ++ 2 "post" "left" 1)
-(define-oper
-
-    (define-operator bplus + 6 "in" "left" 2)
-    (define-operator bminus - 6 "in" "left" 2)

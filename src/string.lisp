@@ -1,11 +1,8 @@
 (in-package :cicl)
 
-(defclass cstring ()
+(defclass cstring (literal)
   ((val
-    :type 'string
-    :accessor val
-    :initform ""
-    :initarg :val)))
+    :type 'string)))
 
 (defmethod print-object ((cstr cstring) stream)
   (format stream "\"~A\"" (val cstr)))

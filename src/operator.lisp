@@ -77,7 +77,7 @@
   (:documentation
    "Return the string representation of operator operating on arguments"))
 
-(defgeneric refine-representation (operator arguments string)
+(defgeneric get-representation (operator arguments &optional repr)
   (:documentation
    "Refine the string representation of operator operating on
    arguments based on the type of operator."))
@@ -85,3 +85,10 @@
 (defgeneric names (operator arguments)
   (:documentation
    "Return a list of the string names of `operator'."))
+
+(defmacro define-simple-names (operator-class name)
+  "Define a simple constant one string `names' method for an operator
+  `operator-class'."
+  `(defmethod names ((operator ,operator-class) args)
+     (values (list ,name)
+	     args)))

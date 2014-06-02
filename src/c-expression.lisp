@@ -1,4 +1,4 @@
-(in-package :cicl)
+(in-package :cicl-sys)
 
 (defclass c-literal (literal) ())
 (defclass c-identifier (identifier) ())
@@ -6,15 +6,24 @@
 (defclass c-array-reference (array-reference) ())
 (defclass c-aggregate-expression (aggregate-expression) ())
 (defclass c-operator-expression (operator-expression) ())
+(defclass c-empty-expression (expression) ())
 
 (defclass c-int (c-literal)
   ((value
     :type 'integer)))
 (defclass c-long (c-int) ())
 (defclass c-llong (c-long) ())
+
+(defclass c-float (c-literal)
+  ((value
+    :type float)))
+(defclass c-double (c-float) ())
+(defclass c-quad (c-double) ())
+
 (defclass c-char (c-literal)
   ((value
     :type 'character)))
+
 (defclass c-string (c-literal)
   ((value
     :type 'string)))
@@ -24,17 +33,21 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod print-object ((cl c-long) stream)
-  (format stream "~AL" (value cl)))
+(defmacro define-print-literal (type-name format-string)
+  `(defmethod print-object ((v ,type-name) stream)
+     (format stream ,format-string (value v))))
 
-(defmethod print-object ((cll c-llong) stream)
-  (format stream "~ALL" (value cll)))
+(define-print-literal c-int "~A")
+(define-print-literal c-long "~AL")
+(define-print-literal c-llong "~ALL")
+(define-print-literal c-float "~Af")
+(define-print-literal c-double "~A")
+(define-print-literal c-quad "~A")
+(define-print-literal c-char "'~C'")
+(define-print-literal c-string "\"~A\"")
+(define-print-literal c-literal "~A") ; Just in case!
 
-(defmethod print-object ((cc c-char) stream)
-  (format stream "'~C'" (value cc)))
-
-(defmethod print-object ((cs c-string) stream)
-  (format stream "\"~A\"" (value cs)))
+(define-print-literal c-identifier "~A")
 
 (defmethod print-object ((cae c-aggregate-expression) stream)
   (format stream "{~{~A~^, ~}}" (subexpressions cae)))
@@ -54,3 +67,6 @@
 
 (defmethod print-object ((coe c-operator-expression) stream)
   (format stream "~A" (get-representation (op coe) (subexpressions coe))))
+
+(defmethod print-object ((cee c-empty-expression) stream)
+  (format stream ""))

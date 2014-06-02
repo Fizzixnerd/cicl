@@ -1,4 +1,4 @@
-(in-package :cicl)
+(in-package :cicl-sys)
 
 (defclass call-list (compound-expression)
   ((op)

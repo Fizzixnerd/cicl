@@ -1,4 +1,4 @@
-(in-package :cicl)
+(in-package :cicl-sys)
 
 (defclass cstring (literal)
   ((val

@@ -1,12 +1,12 @@
-(in-package :cicl)
+(in-package :cicl-sys)
 
-(define-operator post+1 2 "post" "left" 1)
-(define-operator post-1 2 "post" "left" 1)
+(define-operator post1+ 2 "post" "left" 1)
+(define-operator post1- 2 "post" "left" 1)
 (define-operator dot 2 "in" "left" 2)
 (define-operator point 2 "in" "left" 2)
 
-(define-operator pre+1 3 "pre" "right" 1)
-(define-operator pre-1 3 "pre" "right" 1)
+(define-operator pre1+ 3 "pre" "right" 1)
+(define-operator pre1- 3 "pre" "right" 1)
 (define-operator uplus 3 "pre" "right" 1)
 (define-operator uminus 3 "pre" "right" 1)
 (define-operator lnot 3 "pre" "right" 1)
@@ -59,24 +59,28 @@
 
 (define-operator comma 17 "in" "left" 2)
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-simple-names post+1 "++")
-(define-simple-names post-1 "--")
+(define-simple-names post1+ "++")
+(define-simple-names post1- "--")
 (define-simple-names dot ".")
 (define-simple-names point "->")
 
-(define-simple-names pre+1 "++")
-(define-simple-names pre-1 "--")
+(define-simple-names pre1+ "++")
+(define-simple-names pre1- "--")
 (define-simple-names uplus "+")
 (define-simple-names uminus "-")
 (define-simple-names lnot "!")
 (define-simple-names bnot "~")
-(defmethod names ((operator cast) args) (error "implement this."))
+(defmethod names ((operator cast) args)
+  (values (list (format nil "(~A)" (car args)) ")")
+	  (cdr args)))
+
 (define-simple-names deref "*")
 (define-simple-names addr "&")
-(defmethod names ((operator sizeof) args) (error "implement this."))
+(defmethod names ((operator sizeof) args)
+  (values (list "sizeof(" ")")
+	  args))
 
 (define-simple-names mul " * ")
 (define-simple-names div " / ")
@@ -130,24 +134,38 @@
       (mkrepr)
       repr))
 
+(defmethod get-representation ((operator sizeof) arguments &optional (repr nil))
+  (let ((rep (unless-mkrepr repr)))
+    (with-accessors ((format-str format-str) (format-args format-args)) rep
+      (setf format-str "sizeof(~A)")
+      (setf format-args arguments))
+    rep))
+
+(defmethod get-representation ((operator cast) arguments &optional (repr nil))
+  (let ((rep (unless-mkrepr repr)))
+    (with-accessors ((format-str format-str) (format-args format-args)) rep
+      (setf format-str "(~A)~A")
+      (setf format-args arguments))
+    rep))
+
 (defmethod get-representation ((operator unary) arguments &optional (repr nil))
   (let ((rep (unless-mkrepr repr)))
     (with-accessors ((format-str format-str)) rep
-      (setf format-str "~A~A"))
+      (setf format-str "(~A~A)"))
     (call-if-next-method operator arguments rep)
     rep))
 
 (defmethod get-representation ((operator binary) arguments &optional (repr nil))
   (let ((rep (unless-mkrepr repr)))
     (with-accessors ((format-str format-str)) rep
-      (setf format-str "~A~A~A"))
+      (setf format-str "(~A~A~A)"))
     (call-if-next-method operator arguments rep)
     rep))
 
 (defmethod get-representation ((operator ternary) arguments &optional (repr nil))
   (let ((rep (unless-mkrepr repr)))
     (with-accessors ((format-str format-str)) rep
-      (setf format-str "~A~A~A~A~A"))
+      (setf format-str "(~A~A~A~A~A)"))
     (call-if-next-method operator arguments rep)
     rep))
 

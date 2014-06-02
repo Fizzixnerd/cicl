@@ -1,4 +1,4 @@
-(in-package :cicl)
+(in-package :cicl-sys)
 
 (defclass operator ()
    ((precedence
@@ -72,10 +72,6 @@
     `(progn
        (defclass ,class-name (operator ,arity-class ,fixity-class ,associativity-class) ())
        (defvar ,class-name (make-instance ',class-name :precedence ,precedence)))))
-
-(defgeneric operation-string (operator &rest arguments)
-  (:documentation
-   "Return the string representation of operator operating on arguments"))
 
 (defgeneric get-representation (operator arguments &optional repr)
   (:documentation

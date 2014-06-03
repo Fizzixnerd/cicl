@@ -1,17 +1,33 @@
 (in-package :cicl-sys)
 
 ;; struct and array literals are considered operators
-(setf *binary-operators* (list '+ '- '* '/ '% '^ 'band 'bor '^ '<<
+(defvar *binary-operators* (list '+ '- '* '/ '% '^ 'band 'bor '^ '<<
 				 '>> 'and 'or '== '!= '= '+= '-= '*=
 				 '/= '%= 'band= 'bor= '~= '<<= '>>=
 				 'dot '-> 'cast 'strcat))
-(setf *unary-operators* (list '+ '- '* '~ 'not 'sizeof 'addr
+(defvar *unary-operators* (list '+ '- '* '~ 'not 'sizeof 'addr
 				'deref '++ '-- 'post1+ 'post1-))
-(setf *ternary-operators* (list 'tern))
-(setf *overloaded-operators* (intersection *binary-operators* *unary-operators*))
-(setf *aggregate-operators* (list 'structl 'arrayl))
-(setf *operators* (append *binary-operators* *unary-operators*
+(defvar *ternary-operators* (list 'tern))
+(defvar *overloaded-operators* (intersection *binary-operators* *unary-operators*))
+(defvar *aggregate-operators* (list 'structl 'arrayl))
+(defvar *operators* (append *binary-operators* *unary-operators*
 			    *aggregate-operators* *ternary-operators*))
+(defvar *cicl-macros* ())
+
+(defmacro defcmacro (name args &rest body)
+  `(progn
+     (defun ,name ,args
+       (parse-c
+	 ,@body))
+     (unionf *cicl-macros* (list ',name))))
+
+(defcmacro derp (&rest args)
+  '(printf "%s" "derp!"))
+
+(defcmacro with-openn-file (filename variable-name mode &rest body)
+  `(scope (defvar (,variable-name (FILE *) (fopen ,filename ,mode)))
+	  ,@body
+	  (fclose ,variable-name)))
 
 (defun contains (lst ele)
   (some #'(lambda (lst-ele) (equal ele lst-ele))
@@ -33,14 +49,27 @@
 	  (if (contains *operators* operator-or-function)
 	      (parse-c-operator-expression expression)
 	      ;; else it's a either a macro or function call
-	      (parse-c-function-call expression))))
+	      (parse-c-function-call-or-macro expression))))
       ;; else
       (parse-c-atomic-expression expression)))
 
+(defun parse-c-function-call-or-macro (expression)
+  (assert (listp expression))
+  (destructuring-bind (fnc-or-macro-name &rest args) expression
+    (if (contains *cicl-macros* fnc-or-macro-name)
+	(parse-macro expression)
+	;; else it's a function
+	(parse-c-function-call expression))))
+
+(defun parse-macro (expression)
+  (destructuring-bind (macro-name &rest args) expression
+    (assert (contains *cicl-macros* macro-name))
+    (eval `(apply (symbol-function ',macro-name) ',args))))
+
 (defun parse-c-function-call (expression)
-  (let ((function-name (parse-c-identifier (car expression)))
-	(args (mapcar #'parse-c-expression (cdr expression))))
-    (make-c-function-call function-name args)))
+  (destructuring-bind (function-name &rest args) expression
+    (make-c-function-call function-name
+			  (mapcar #'parse-c-expression args))))
 
 (defun parse-c-operator-expression (expression)
   (let ((op (car expression)))
@@ -185,9 +214,9 @@
       ((every #'(lambda (c) (char= c #\*))
 	      (symbol-name sym))
        (setf pointer-level (count #\* (symbol-name sym))))
-      ((keywordp sym)
+      ((symbolp sym)
        (setf type-name sym))
-      (t (error "formed type-specifier ~A with sym ~A" type-specifier sym)))
+      (t (error "malformed type-specifier ~A with sym ~A of type ~A." type-specifier sym (type-of sym))))
     (if (> (length type-specifier) 1)
 	(%parse-c-type (cdr type-specifier)
 		       qualifiers type-name pointer-level)

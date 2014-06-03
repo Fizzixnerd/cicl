@@ -18,7 +18,7 @@
    (derp (printf "%s\\n" "Hello, world!"))
    (with-openn-file "hairyballs.txt" fp "r"
 		    (fprintf fp "So many hairy balls.\\n"))
-   (return)))
+   (return))
 
  (defun print-int-list ((list :int-list *))
    (:void)

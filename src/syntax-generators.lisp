@@ -32,6 +32,7 @@
   (c-typedef-decl  name ctype)
   (c-if-statement test-expression then-body else-body)
   (c-return-statement expression)
+  (c-empty-expression)
 ;; TODO
 ;;  (c-switch-statement test-expression
 ;;  (c-do-loop          test-expression
@@ -43,6 +44,10 @@
   (c-function-call function-name subexpressions)
   (c-array-reference subexpressions)
   (c-operator-expression op subexpressions)
+
+  (c-program statements)
+
+  (cpp-include filename)
   
   (c-int value)
   (c-long value)

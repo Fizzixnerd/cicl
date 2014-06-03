@@ -1,17 +1,74 @@
-(in-package :cicl)
-
-(cl:defvar *operators* (list '+ '- '* '/ '% 'band 'bor '^ '~ '<< '>> 'and
-			  'or 'not '== '!= '= '+= '-= '*= '/= '%= 'band=
-			  'bor= '^= '~= '<<= '>>= '. '-> 'sizeof 'cast))
+(cl:in-package :cicl)
 
 ;; C Preprocessor Directives
-  
-(cl:defmacro line-number ())
 
 (cl:defmacro literal ())
 (cl:defmacro fliteral ())
 
-(cl:defmacro include ())
+(cl:defmacro wrap-in-parser (name parser-name)
+  `(cl:defun ,name (cl:&rest args)
+    (parse-c ',(cl:cons name 'args))))
+
+(cl:defmacro defun (name cl:&rest args)
+  `(cl:progn
+     (cl:defmacro ,name (cl:&rest args)
+     `(parse-c-function-call ',(cl:cons ',name args)))
+     (parse-c-function-defn ',(cl:cons 'defun name args))))
+
+(defun do-cool-stuff ((first-arg :int) (second-arg struct :int-list *))
+  (:void)
+  (= first-arg (-> second-arg next)))
+
+
+
+
+(wrap-in-parser include parse-cpp-include)
+(wrap-in-parser = parse-c-expression)
+(wrap-in-parser * parse-c-expression)
+(wrap-in-parser -> parse-c-expression)
+
+(parse-c-expression
+ parse-c-function-call
+ parse-c-operator-expression
+ parse-c-overloaded-operator-expression
+ parse-c-atomic-expression
+ parse-c-identifier
+ parse-c-unary-operator-expression
+ parse-c-binary-operator-expression
+ parse-c-ternary-operator-expression
+ parse-c-subvariable-description
+ parse-c-type
+
+ parse-c-statement
+ parse-c-scope
+ parse-explicit-c-scope
+ parse-c-expression-statement
+ parse-c-variable-decl
+ parse-c-function-defn
+ parse-c-funtion-decl
+ parse-c-return-statement
+ parse-c-continue-statement
+ parse-c-break-statement
+ parse-c-enum-decl
+ parse-c-struct-decl
+ parse-c-typedef-decl
+ parse-c-if-statement
+ parse-c-empty-statement
+ parse-c-switch-statement
+ parse-c-do-loop
+ parse-c-while-loop
+ parse-c-for-loop
+
+ parse-cpp-directive
+ parse-cpp-include
+
+ parse-c-statement-or-directive
+ parse-c)
+
+
+(wrap-in-parser for parse-c-for-loop)
+(wrap-in-parser while parse-c-while-loop)
+
 (cl:defmacro ifdef ())
 (cl:defmacro ifndef ())
 (cl:defmacro line ())
@@ -19,8 +76,10 @@
 
 ;; Statements
 
-(cl:defmacro for ((initializer test incrementer) &body body))
-(cl:defmacro while ())
+(cl:defmacro for (cl:&rest args)
+  `(parse-c-for-loop ',(cl:cons 'for args)))
+(cl:defmacro while (cl:&rest args)
+  `(cicl-sys::parse-c-while-loop ',(cl:cons 'while args)))
 (cl:defmacro do ())
 
 (cl:defmacro if (test then-body &body else-body))

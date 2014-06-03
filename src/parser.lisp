@@ -32,7 +32,7 @@
 	(let ((operator-or-function (car expression)))
 	  (if (contains *operators* operator-or-function)
 	      (parse-c-operator-expression expression)
-	      ;; else it's a function
+	      ;; else it's a either a macro or function call
 	      (parse-c-function-call expression))))
       ;; else
       (parse-c-atomic-expression expression)))
@@ -82,7 +82,7 @@
 
 (defun unlispify-name (symbol)
   (let ((unlispified-name
-	 (map 'string #'unlispify-character (string-downcase (symbol-name symbol)))))
+	 (map 'string #'unlispify-character (symbol-name symbol))))
     (if (keywordp symbol)
 	(make-keyword unlispified-name)
 	(intern unlispified-name))))
@@ -172,7 +172,7 @@
 (defun parse-c-subvariable-description (description)
   (let ((variable-name (car description))
 	(type-specifier (cdr description)))
-    (make-c-subvariable-description (parse-c-atomic-expression variable-name)
+    (make-c-subvariable-description (parse-c-identifier variable-name)
 				    (parse-c-type type-specifier))))
 
 (defun %parse-c-type (type-specifier &optional qualifiers
@@ -180,14 +180,14 @@
   (let ((sym (car type-specifier)))
     (cond
       ((some #'(lambda (s) (string= sym s))
-	     (list "const" "volatile" "long" "struct"))
+	     (list 'const 'volatile 'long 'struct))
        (appendf qualifiers (list sym)))
       ((every #'(lambda (c) (char= c #\*))
 	      (symbol-name sym))
        (setf pointer-level (count #\* (symbol-name sym))))
       ((keywordp sym)
        (setf type-name sym))
-      (t (error "malformed type-specifier ~A with sym ~A" type-specifier sym)))
+      (t (error "formed type-specifier ~A with sym ~A" type-specifier sym)))
     (if (> (length type-specifier) 1)
 	(%parse-c-type (cdr type-specifier)
 		       qualifiers type-name pointer-level)
@@ -200,19 +200,28 @@
     (%parse-c-type type-spec)))
 
 (defun parse-c-statement (statement)
-  (let ((ckeyword (car statement)))
-    (cond
-      ((string= ckeyword 'defun) (parse-c-function-defn statement))
-      ((string= ckeyword 'defvar) (parse-c-variable-decl statement))
-      ((string= ckeyword 'defstruct) (parse-c-struct-decl statement))
-      ((string= ckeyword 'return) (parse-c-return-statement statement))
-      ((string= ckeyword 'for) (parse-c-for-loop statement))
-      ((string= ckeyword 'typedef) (parse-c-typedef-decl statement))
-      (t (parse-c-expression-statement statement)))))
+  (cond
+    ((null statement) (parse-c-empty-statement statement))
+    ((listp statement)
+     (let ((ckeyword (car statement)))
+       (cond
+	 ((string= ckeyword 'defun) (parse-c-function-defn statement))
+	 ((string= ckeyword 'defvar) (parse-c-variable-decl statement))
+	 ((string= ckeyword 'defstruct) (parse-c-struct-decl statement))
+	 ((string= ckeyword 'return) (parse-c-return-statement statement))
+	 ((string= ckeyword 'if) (parse-c-if-statement statement))
+	 ((string= ckeyword 'for) (parse-c-for-loop statement))
+	 ((string= ckeyword 'typedef) (parse-c-typedef-decl statement))
+	 ((string= ckeyword 'scope) (parse-explicit-c-scope statement))
+	 (t (
 
 (defun parse-c-scope (scope)
   (let ((statements (mapcar #'parse-c-statement scope)))
     (make-c-scope statements)))
+
+(defun parse-explicit-c-scope (scope)
+  (assert (string= 'scope (car scope)))
+  (parse-c-scope (cdr scope)))
 
 (defun parse-c-expression-statement (statement)
   (make-c-expression-statement (parse-c-expression statement)))
@@ -239,15 +248,22 @@
     (if (null function-body)
 	(parse-c-function-decl statement)
 	;; else
-	(let ((fnc-name (parse-c-atomic-expression function-name))
+	(let ((fnc-name (parse-c-identifier function-name))
 	      (return-type (parse-c-type function-return-type-specifier))
 	      (arg-list (mapcar #'parse-c-subvariable-description lambda-list))
 	      (body (parse-c-scope function-body)))
 	  (make-c-function-defn fnc-name return-type arg-list body)))))
 
-;; FIXME
 (defun parse-c-function-decl (statement)
-  (assert (string= 'defun (car statement))))
+  (assert (string= 'defun (car statement)))
+  (assert (null (cddddr statement)))
+  (let* ((function-name (cadr statement))
+	 (lambda-list (caddr statement))
+	 (function-return-type-specifier (cadddr statement))
+	 (fnc-name (parse-c-identifier function-name))
+	 (return-type (parse-c-type function-return-type-specifier))
+	 (arg-list (mapcar #'parse-c-subvariable-description lambda-list)))
+    (make-c-function-decl fnc-name return-type arg-list)))
 
 (defun parse-c-return-statement (statement)
   (assert (string= 'return (car statement)))
@@ -257,27 +273,45 @@
       ; else
       (make-c-return-statement nil)))
 
-(defun parse-c-enum-decl (statement))
+(defun parse-c-continue-statement (statement))
+
+(defun parse-c-break-statement (statement))
+
+(defun parse-c-enum-decl (statement)
+  (assert (string= 'defenum (car statement))))
 
 (defun parse-c-struct-decl (statement)
   (assert (string= 'defstruct (car statement)))
-  (let ((type-name (parse-c-atomic-expression (cadr statement)))
+  (let ((type-name (parse-c-identifier (cadr statement)))
 	(member-list (mapcar #'parse-c-subvariable-description (cddr statement))))
     (make-c-struct-decl type-name nil member-list)))
 
 (defun parse-c-typedef-decl (statement)
   (assert (string= 'typedef (car statement)))
-  (let ((name (parse-c-atomic-expression (car (last statement))))
+  (let ((name (parse-c-identifier (car (last statement))))
 	(ctype (parse-c-type (cadr statement))))
     (make-c-typedef-decl name ctype)))
 
-(defun parse-c-if-statement (statement))
+(defun parse-c-if-statement (statement)
+  (assert (string= 'if (car statement)))
+  (let* ((test-expression (parse-c-expression (cadr statement)))
+	 (then-body (parse-c-statement (caddr statement)))
+	 (else-body (cdddr statement))
+	 (else-scope (parse-c-scope else-body)))
+    (make-c-if-statement test-expression then-body else-scope)))
 
-(defun parse-c-switch-statement (statement))
+(defun parse-c-empty-statement (statement)
+  (assert (null statement))
+  (make-c-empty-expression))
 
-(defun parse-c-do-loop (statement))
+(defun parse-c-switch-statement (statement)
+  (assert (string= 'switch (car statement))))
 
-(defun parse-c-while-loop (statement))
+(defun parse-c-do-loop (statement)
+  (assert (string= 'do (car statement))))
+
+(defun parse-c-while-loop (statement)
+  (assert (string= 'while (car statement))))
 
 (defun parse-c-for-loop (statement)
   (assert (string= 'for (car statement)))
@@ -290,6 +324,40 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun parse-cpp-directive (directive))
+(defun parse-cpp-directive (directive)
+  (assert (cpp-directive-p directive))
+  (let ((directive-name (car directive)))
+    (cond
+      ((string= directive-name 'include) (parse-cpp-include directive))
+      (t (error "Can't parse ~A directive." directive-name)))))
 
-(defun parse-cpp-include (directive))
+(defun parse-cpp-include (directive)
+  (assert (string= 'include (car directive)))
+  (let* ((filename (cadr directive))
+	 (filename-len (length filename)))
+    (if (and (char= (elt filename 0) #\<)
+	     (char= (elt filename (1- filename-len)) #\>))
+	(make-cpp-include filename)
+	;; else, add some quotes for when printing.
+	(make-cpp-include (concatenate 'string "\"" filename "\"")))))
+	
+
+(defun parse-c-statement-or-directive (statement-or-directive)
+  (if (cpp-directive-p statement-or-directive)
+      (parse-cpp-directive statement-or-directive)
+      ;; else
+      (parse-c-statement statement-or-directive)))
+
+(defun cpp-directive-p (directive)
+  (and (listp directive) (some #'(lambda (s) (string= (car directive) s)) (list 'include 'define
+									   'ifdef 'undef))))
+
+(defun parse-c (&rest statements-or-directives)
+  (make-c-program (mapcar #'(lambda (s-or-d) (parse-c-statement-or-directive s-or-d)) statements-or-directives)))
+
+(defmacro cicl (&rest statements-or-directives)
+  `(parse-c ,@(iter
+	       (for s-or-d in statements-or-directives)
+	       (collect `(quote ,s-or-d)))))
+
+

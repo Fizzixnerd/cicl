@@ -1,5 +1,6 @@
 (require 'iterate)
 (require 'alexandria)
+(require 'named-readtables)
 
 (load "package.lisp")
 (load "macros.lisp")
@@ -10,6 +11,7 @@
 (load "c-expression.lisp")
 (load "c-operators.lisp")
 (load "c-statement.lisp")
+(load "c-cpp.lisp")
 (load "string.lisp")
 (load "syntax-generators.lisp")
 (load "parser.lisp")

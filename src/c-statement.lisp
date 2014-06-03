@@ -134,6 +134,13 @@
     :initarg :incrementer
     :initform (error "Must provide an incrementer."))))
 
+(defclass c-program ()
+  ((statements
+    :type 'list
+    :reader statements
+    :initarg :statements
+    :initform (error "Must provide statements."))))
+
 (defun make-pointer-level-list (pointer-level)
   (when pointer-level
     (if (plusp pointer-level)
@@ -194,3 +201,12 @@
 (defmethod print-object ((ctd c-typedef-decl) stream)
   (with-accessors ((name name) (ctype ctype)) ctd
     (format stream "typedef ~A ~A;" ctype name)))
+
+(defmethod print-object ((cis c-if-statement) stream)
+  (with-accessors ((test-expression test-expression) (then-body then-body)
+		   (else-body else-body)) cis
+    (format stream "if (~A) ~Aelse ~A" test-expression then-body else-body)))
+
+(defmethod print-object ((cp c-program) stream)
+  (with-accessors ((statements statements)) cp
+    (format stream "~{~A~%~}" statements)))

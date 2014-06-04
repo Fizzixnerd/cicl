@@ -1,0 +1,58 @@
+(cicl-to-file "silveretta.c"
+  (include "debug.h")
+  (include "read.h")
+  (include "print.h")
+  (include "eval.h")
+  (include "val.h")
+  (include "types.h")
+  (include "variable.h")
+  
+  (include "mpc.h")
+  
+  (include "<stdio.h>")
+  (include "<stdlib.h>")
+  (include "<string.h>")
+  (include "<linedit.h>")
+
+  (defun main ((argc :int) (argv :char **))
+    (:int)
+    (defvar (long-num   (:mpc-parser-t *) (mpc-new "long_num"))
+            (symbol     (:mpc-parser-t *) (mpc-new "symbol"))
+            (list       (:mpc-parser-t *) (mpc-new "list"))
+	    (sexp       (:mpc-parser-t *) (mpc-new "sexp"))
+	    (silveretta (:mpc-parser-t *) (mpc-new "silveretta")))
+
+    (mpca-lang MPC-LANG-DEFAULT
+	       "                                                      \\
+               long_num   : /-?[0-9]+/                             ;  \\
+               symbol     : /[a-z]+/ | '+' | '-' | '*' | '/'       ;  \\
+               list       : '(' <symbol>* <sexp>* ')'              ;  \\
+               sexp       : <long_num> | <symbol> | <list>         ;  \\
+               silveretta : /^/ <sexp>* /$/                        ;  \\
+               "
+	       long-num symbol list sexp silveretta)
+
+    (puts "Silveretta Version 2.0a")
+    (puts "Press Ctrl+c to Exit\\n")
+
+    (while 1
+      (defvar (prompt (:char *) "ag>> ")
+	      (input  (:char *) (readline prompt)))
+      (add-history input)
+
+      (defvar (r (:mpc-result-t)))
+      (if (mpc-parse "<stdin>" input silveretta (addr r))
+	  (scope
+	   (defvar (read-result (:ag-val *) (ag-read (dot r output)))
+	           (e           (:env *)    (malloc (sizeof :env)))
+                   (eval-result (:ag-val *) (ag-eval read-result e)))
+	   (ag-print eval-result)
+	   (mpc-ast-delete (dot r output))
+	   (del-env e))
+	  ;; else
+	  (dputln "There was an error with the AST.")
+	  (mpc-err-print (dot r error))
+	  (mpr-err-delete (dot r error)))
+      (free input))
+    (mpc-cleanup 5 long-num symbol list sexp silveretta)
+    (return EXIT-SUCCESS)))

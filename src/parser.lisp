@@ -21,14 +21,6 @@
 	 ,@body))
      (unionf *cicl-macros* (list ',name))))
 
-(defcmacro derp (&rest args)
-  '(printf "%s" "derp!"))
-
-(defcmacro with-openn-file (filename variable-name mode &rest body)
-  `(scope (defvar (,variable-name (FILE *) (fopen ,filename ,mode)))
-	  ,@body
-	  (fclose ,variable-name)))
-
 (defun contains (lst ele)
   (some #'(lambda (lst-ele) (equal ele lst-ele))
 	lst))
@@ -68,7 +60,7 @@
 
 (defun parse-c-function-call (expression)
   (destructuring-bind (function-name &rest args) expression
-    (make-c-function-call function-name
+    (make-c-function-call (parse-c-identifier function-name)
 			  (mapcar #'parse-c-expression args))))
 
 (defun parse-c-operator-expression (expression)
@@ -157,11 +149,10 @@
       ((string= op 'tern) (make-c-operator-expression tern subexps))
       (t (error "~A isn't a ternary operator." op)))))
 
-;; (+ (+ 1 (functo 2 3)) 4)
 (defun parse-nested-c-binary-operator-expression (expression)
   (assert (length= 3 expression))
-  (let* ((op (car expression))
-	 (subexps (mapcar #'parse-c-expression (cdr expression))))
+  (let ((op (car expression))
+	(subexps (mapcar #'parse-c-expression (cdr expression))))
     (cond ((string= op '+) (make-c-operator-expression bplus subexps))
 	  ((string= op '-) (make-c-operator-expression bminus subexps))
 	  ((string= op '*) (make-c-operator-expression mul subexps))
@@ -189,9 +180,9 @@
 	  ((string= op '>>=) (make-c-operator-expression rashr subexps))
 	  ((string= op 'dot) (make-c-operator-expression dot subexps))
 	  ((string= op '->) (make-c-operator-expression point subexps))
-	  
-	  ((string= op 'cast) (let ((subexps (cons (parse-c-type (cadr expression)) (cdr subexps))))
-	   (make-c-operator-expression cast subexps)))
+	  ((string= op 'cast) ;(let ((subexps
+				;     (cons (parse-c-type (cadr expression)) (cdr subexps))))
+	   (make-c-operator-expression cast subexps))
 	  
 	  ((string= op 'strcat) (make-c-operator-expression cast subexps))
 	  (t (error "~A isn't a binary operator." op)))))
@@ -240,9 +231,10 @@
 	 ((string= ckeyword 'return) (parse-c-return-statement statement))
 	 ((string= ckeyword 'if) (parse-c-if-statement statement))
 	 ((string= ckeyword 'for) (parse-c-for-loop statement))
+	 ((string= ckeyword 'while) (parse-c-while-loop statement))
 	 ((string= ckeyword 'typedef) (parse-c-typedef-decl statement))
 	 ((string= ckeyword 'scope) (parse-explicit-c-scope statement))
-	 (t (
+	 (t (parse-c-expression-statement statement)))))))
 
 (defun parse-c-scope (scope)
   (let ((statements (mapcar #'parse-c-statement scope)))
@@ -340,7 +332,11 @@
   (assert (string= 'do (car statement))))
 
 (defun parse-c-while-loop (statement)
-  (assert (string= 'while (car statement))))
+  (destructuring-bind (while-symbol test-expression &rest body) statement
+    (assert (string= while-symbol 'while))
+    (let ((test-expr (parse-c-expression test-expression))
+	  (body (parse-c-scope body)))
+      (make-c-while-loop test-expr body))))
 
 (defun parse-c-for-loop (statement)
   (assert (string= 'for (car statement)))
@@ -382,11 +378,22 @@
 									   'ifdef 'undef))))
 
 (defun parse-c (&rest statements-or-directives)
-  (make-c-program (mapcar #'(lambda (s-or-d) (parse-c-statement-or-directive s-or-d)) statements-or-directives)))
+  (make-c-program (mapcar #'(lambda (s-or-d) (parse-c-statement-or-directive s-or-d))
+			  statements-or-directives)))
 
 (defmacro cicl (&rest statements-or-directives)
   `(parse-c ,@(iter
 	       (for s-or-d in statements-or-directives)
-	       (collect `(quote ,s-or-d)))))
+	       (collect `',s-or-d))))
 
+(defmacro cicl-to-file (file-name &rest cicl-statements)
+  `(with-open-file (out ,file-name :direction :output :if-exists :supersede
+			           :if-does-not-exist :create)
+     (print (cicl ,@cicl-statements) out)))
 
+(defmacro cicl-compile (compiled-filename &rest cicl-statements)
+  (let ((source-filename (concatenate 'string compiled-filename ".c")))
+  `(progn
+     (cicl-to-file ,source-filename ,@cicl-statements)
+     (trivial-shell:shell-command (concatenate 'string "gcc -ggdb -Wall -Wextra -O2 -std=gnu11 "
+					       ,source-filename " -o " ,compiled-filename)))))

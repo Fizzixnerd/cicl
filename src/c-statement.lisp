@@ -210,3 +210,7 @@
 (defmethod print-object ((cp c-program) stream)
   (with-accessors ((statements statements)) cp
     (format stream "~{~A~%~}" statements)))
+
+(defmethod print-object ((cwl c-while-loop) stream)
+  (with-accessors ((test-expression test-expression) (body body)) cwl
+    (format stream "while (~A) ~A" test-expression body)))

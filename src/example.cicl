@@ -3,10 +3,15 @@
 (defcmacro double (x)
   `(* ,x ,x))
 
+(defcmacro with-file (variable-name file-name mode &rest body)
+  `(scope
+    (defvar ,variable-name (:FILE *) (fopen ,file-name ,mode))
+    ,@body
+    (fclose ,variable-name)))
+
 (cicl
  (include "<stdio.h>")
  (include "<stdlib.h>")
- (include "example.h")
 
  (defstruct :int-list
    (val :int)
@@ -15,19 +20,17 @@
 
  (defun print-hello ()
    (:void)
-   (derp (printf "%s\\n" "Hello, world!"))
-   (with-openn-file "hairyballs.txt" fp "r"
-		    (fprintf fp "So many hairy balls.\\n"))
-   (return)))
+   (printf "%s\\n" "Hello, world.")
+   (return))
 
  (defun print-int-list ((list :int-list *))
    (:void)
    (defvar (it (:int-list *)))
    (for ((= it list)
-	 (!= (-> it next) NULL)
+	 it
 	 (= it (-> it next)))
 	(printf "%d " (-> it val)))
-   (printf "\n")
+   (printf "\\n")
    (return))
 
  (defun main ((argc :int) (argv :char **))
@@ -43,9 +46,5 @@
    (= (-> l3 next) NULL)
    (print-int-list l1)
    (print-hello)
-   (return 0))
+   (return EXIT-SUCCESS)))
 
- (if (* i 3)
-     (scope (= x (- 9 5)))
-     (= x (- 9 9))
-     (= y (double 12))))

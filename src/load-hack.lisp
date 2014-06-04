@@ -1,6 +1,7 @@
 (require 'iterate)
 (require 'alexandria)
 (require 'named-readtables)
+(require 'trivial-shell)
 
 (load "package.lisp")
 (load "macros.lisp")

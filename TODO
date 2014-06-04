@@ -1,0 +1,20 @@
+Get asdf working with this.
+
+Add comments.
+
+Add direct parsing of dotted and arrow'd identifiers.
+
+Document important functions.
+
+Find out if it's possible to get #line information.
+
+Sort print-object functions in c-statements.lisp, c-expressions.lisp, etc.
+
+Finish implementing all of C's features, including arefs and doloops.
+
+Add syntax for aref'ing.  Maybe something like ([idx] array-var)?
+
+Use named-readtables to avoid screwing up everyone elses code
+
+Bind *print-case* so that it only affects cicl code and doesn't screw
+everyone else over.
